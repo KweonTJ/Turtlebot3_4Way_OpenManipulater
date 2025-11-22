@@ -29,6 +29,15 @@ const float VELOCITY_CONSTANT_VALUE = 1263.632956882;
 // const uint8_t DXL_MOTOR_ID_LEFT = 1; // ID of left motor
 // const uint8_t DXL_MOTOR_ID_RIGHT = 2; // ID of right motor
 
+static const uint8_t  ADDR_TORQUE_ENABLE      = 64;
+static const uint8_t  ADDR_OPERATING_MODE     = 11;
+static const uint16_t ADDR_GOAL_VELOCITY      = 104;
+static const uint16_t ADDR_PRESENT_VELOCITY   = 128;
+static const uint16_t ADDR_PRESENT_POSITION   = 132;
+static const uint16_t ADDR_PROFILE_ACCEL      = 108;
+
+static const uint8_t  OP_MODE_VELOCITY        = 1;
+
 const float DXL_PORT_PROTOCOL_VERSION = 2.0; // Dynamixel protocol version 2.0
 const uint32_t DXL_PORT_BAUDRATE = 1000000; // baurd rate of Dynamixel
 const int OPENCR_DXL_DIR_PIN = 84; // Arduino pin number of DYNAMIXEL direction pin on OpenCR.
@@ -73,18 +82,44 @@ bool Turtlebot3MotorDriver4WD::init(void)
   sync_write_param.xel[MortorLocation::LEFT_FRONT].id = DXL_MOTOR_ID_LEFT_FRONT;
   sync_write_param.xel[MortorLocation::RIGHT_FRONT].id = DXL_MOTOR_ID_RIGHT_FRONT;
 
-  sync_read_param.addr = 132;
-  sync_read_param.length = 4;
+  // sync_read_param.addr = 132;
+  // sync_read_param.length = 4;
   // sync_read_param.id_count = 2;
   // sync_read_param.xel[LEFT].id = left_wheel_id_;
   // sync_read_param.xel[RIGHT].id = right_wheel_id_;
-  sync_read_param.id_count = 2;
+  sync_read_param.id_count = 4;
   sync_read_param.xel[MortorLocation::LEFT_REAR].id  = DXL_MOTOR_ID_LEFT_REAR;
   sync_read_param.xel[MortorLocation::RIGHT_REAR].id = DXL_MOTOR_ID_RIGHT_REAR;
-  // sync_read_param.xel[MortorLocation::LEFT_FRONT].id = DXL_MOTOR_ID_LEFT_FRONT;
-  // sync_read_param.xel[MortorLocation::RIGHT_FRONT].id = DXL_MOTOR_ID_RIGHT_FRONT;
+  sync_read_param.xel[MortorLocation::LEFT_FRONT].id = DXL_MOTOR_ID_LEFT_FRONT;
+  sync_read_param.xel[MortorLocation::RIGHT_FRONT].id = DXL_MOTOR_ID_RIGHT_FRONT;
 
   // Enable Dynamixel Torque
+  uint8_t wheel_ids[4] = {
+    DXL_MOTOR_ID_LEFT_REAR,
+    DXL_MOTOR_ID_RIGHT_REAR,
+    DXL_MOTOR_ID_LEFT_FRONT,
+    DXL_MOTOR_ID_RIGHT_FRONT
+  };
+
+  if (!is_connected()) {
+    return false;
+  }
+
+  // 2) 4개 휠의 Operating Mode = Velocity(1)로 설정 (syncWrite 사용)
+  sync_write_param.addr   = ADDR_OPERATING_MODE;   // 11
+  sync_write_param.length = 1;
+
+  sync_write_param.xel[MortorLocation::LEFT_REAR].data[0]   = OP_MODE_VELOCITY;
+  sync_write_param.xel[MortorLocation::RIGHT_REAR].data[0]  = OP_MODE_VELOCITY;
+  sync_write_param.xel[MortorLocation::LEFT_FRONT].data[0]  = OP_MODE_VELOCITY;
+  sync_write_param.xel[MortorLocation::RIGHT_FRONT].data[0] = OP_MODE_VELOCITY;
+
+  dxl.syncWrite(sync_write_param);
+  delay(20);  // 모드 변경 후 약간의 여유
+
+  // 3) Torque ON (기존 set_torque 사용)
+  set_torque(true);
+
   set_torque(true);
 
   return true;
@@ -113,6 +148,7 @@ bool Turtlebot3MotorDriver4WD::set_torque(bool onoff)
 
   sync_write_param.addr = 64;
   sync_write_param.length = 1;
+  sync_write_param.id_count = 4;
   // sync_write_param.xel[LEFT].data[0] = onoff;
   // sync_write_param.xel[RIGHT].data[0] = onoff;
   sync_write_param.xel[MortorLocation::LEFT_REAR].data[0]   = onoff;
@@ -166,6 +202,7 @@ bool Turtlebot3MotorDriver4WD::read_present_position(int32_t &left_value, int32_
 
   sync_read_param.addr = 132;
   sync_read_param.length = 4;
+  sync_read_param.id_count = 2;
 
   if(dxl.syncRead(sync_read_param, read_result)){
     // memcpy(&left_value, read_result.xel[LEFT].data, read_result.xel[LEFT].length);
@@ -194,6 +231,7 @@ bool Turtlebot3MotorDriver4WD::read_present_velocity(int32_t &left_value, int32_
 
   sync_read_param.addr = 128;
   sync_read_param.length = 4;
+  sync_read_param.id_count = 2;
 
   if(dxl.syncRead(sync_read_param, read_result)){
     // memcpy(&left_value, read_result.xel[LEFT].data, read_result.xel[LEFT].length);
@@ -221,7 +259,8 @@ bool Turtlebot3MotorDriver4WD::read_present_current(int16_t &left_value, int16_t
 
   sync_read_param.addr = 126;
   sync_read_param.length = 2;
-
+  sync_read_param.id_count = 2;
+  
   if(dxl.syncRead(sync_read_param, read_result)){
     // memcpy(&left_value, read_result.xel[LEFT].data, read_result.xel[LEFT].length);
     // memcpy(&right_value, read_result.xel[RIGHT].data, read_result.xel[RIGHT].length);
@@ -248,7 +287,8 @@ bool Turtlebot3MotorDriver4WD::read_profile_acceleration(uint32_t &left_value, u
 
   sync_read_param.addr = 108;
   sync_read_param.length = 4;
-
+  sync_read_param.id_count = 2;
+  
   if(dxl.syncRead(sync_read_param, read_result)){
     // memcpy(&left_value, read_result.xel[LEFT].data, read_result.xel[LEFT].length);
     // memcpy(&right_value, read_result.xel[RIGHT].data, read_result.xel[RIGHT].length);
@@ -273,6 +313,8 @@ bool Turtlebot3MotorDriver4WD::write_velocity(int32_t left_value, int32_t right_
 
   sync_write_param.addr = 104;
   sync_write_param.length = 4;
+  sync_write_param.id_count = 4;
+  
   // memcpy(sync_write_param.xel[LEFT].data, &left_value, sync_write_param.length);
   // memcpy(sync_write_param.xel[RIGHT].data, &right_value, sync_write_param.length);
   memcpy(sync_write_param.xel[MortorLocation::LEFT_REAR].data,   &left_value, sync_write_param.length);
