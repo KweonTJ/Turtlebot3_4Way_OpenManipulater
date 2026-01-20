@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>dxl_id_scanner</name>
+  <version>0.0.2</version>
+  <description>Simple Dynamixel ID scanner for OpenCR</description>
+  <maintainer email="kweontj0701@naver.com">ubuntu</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+  
+  <exec_depend>python3</exec_depend>
+  <exec_depend>python3-dynamixel-sdk</exec_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
